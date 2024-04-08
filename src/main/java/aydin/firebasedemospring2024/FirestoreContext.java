@@ -15,6 +15,7 @@ public class FirestoreContext {
     public Firestore firebase() {
         try {
 
+            //You could also just write 'key.jason'
             FileInputStream serviceAccount =
                     new FileInputStream("src/main/resources/aydin/firebasedemospring2024/key.jason");
 

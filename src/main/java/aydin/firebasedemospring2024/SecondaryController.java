@@ -9,4 +9,14 @@ public class SecondaryController {
     private void switchToPrimary() throws IOException {
         DemoApp.setRoot("primary");
     }
+
+    public void switchToSignIn() throws IOException{
+        DemoApp.setRoot("login");
+    }
+
+
+    public void switchToRegister() throws IOException{
+        DemoApp.setRoot("register");
+    }
+
 }

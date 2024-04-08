@@ -17,10 +17,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 
 public class PrimaryController {
     @FXML
@@ -52,6 +49,27 @@ public class PrimaryController {
         return listOfUsers;
     }
 
+
+
+
+    //******************************************************
+    // New Additions
+    //******************************************************
+    @FXML
+    private TextField createEmailTextField;
+
+    @FXML
+    private TextField createPassTextField;
+
+    @FXML
+    private TextField createPhoneNumberTextField;
+
+
+    String getNewEmail;
+    String getNewPassword;
+
+
+
     void initialize() {
 
         AccessDataView accessDataViewModel = new AccessDataView();
@@ -66,8 +84,9 @@ public class PrimaryController {
     }
 
     @FXML
-    void registerButtonClicked(ActionEvent event) {
+    void registerButtonClicked(ActionEvent event) throws IOException {
         registerUser();
+        switchToPrimary();
     }
 
 
@@ -78,7 +97,7 @@ public class PrimaryController {
 
     @FXML
     private void switchToSecondary() throws IOException {
-        DemoApp.setRoot("secondary");
+        DemoApp.setRoot("welcome-screen");
     }
     public boolean readFirebase()
     {
@@ -98,10 +117,12 @@ public class PrimaryController {
                 for (QueryDocumentSnapshot document : documents)
                 {
                     outputTextArea.setText(outputTextArea.getText()+ document.getData().get("Name")+ " , Age: "+
-                            document.getData().get("Age")+ " \n ");
+                            document.getData().get("Age")+ " PhoneNumber: " +
+                            document.getData().get("PhoneNumber")+ " \n ");
                     System.out.println(document.getId() + " => " + document.getData().get("Name"));
                     person  = new Person(String.valueOf(document.getData().get("Name")),
-                            Integer.parseInt(document.getData().get("Age").toString()));
+                            Integer.parseInt(document.getData().get("Age").toString()),
+                            String.valueOf(document.getData().get("PhoneNumber")));
                     listOfUsers.add(person);
                 }
             }
@@ -119,20 +140,40 @@ public class PrimaryController {
         return key;
     }
 
+
+
+    //My Version
     public boolean registerUser() {
+
+
+        //Getting New email and password from user
+        getNewEmail = createEmailTextField.getText();
+        getNewPassword = createPassTextField.getText();
+
+
         UserRecord.CreateRequest request = new UserRecord.CreateRequest()
-                .setEmail("user222@example.com")
+                .setEmail(getNewEmail)
                 .setEmailVerified(false)
-                .setPassword("secretPassword")
-                .setPhoneNumber("+11234567890")
-                .setDisplayName("John Doe")
+                .setPassword(getNewPassword)
+//                .setPhoneNumber("+11234567891")
+//                .setDisplayName("John Doe")
                 .setDisabled(false);
+
+        DocumentReference docRef = DemoApp.fstore.collection("Passwords").document(UUID.randomUUID().toString());
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("Password", createPassTextField.getText());
+
+        //asynchronously write data
+        ApiFuture<WriteResult> result = docRef.set(data);
+
+
 
         UserRecord userRecord;
         try {
             userRecord = DemoApp.fauth.createUser(request);
             System.out.println("Successfully created new user with Firebase Uid: " + userRecord.getUid()
-            + " check Firebase > Authentication > Users tab");
+                    + " check Firebase > Authentication > Users tab");
             return true;
 
         } catch (FirebaseAuthException ex) {
@@ -141,7 +182,10 @@ public class PrimaryController {
             return false;
         }
 
+
+
     }
+
 
     public void addData() {
 
@@ -150,8 +194,93 @@ public class PrimaryController {
         Map<String, Object> data = new HashMap<>();
         data.put("Name", nameTextField.getText());
         data.put("Age", Integer.parseInt(ageTextField.getText()));
+        //new
+        data.put("PhoneNumber", createPhoneNumberTextField.getText());
 
         //asynchronously write data
         ApiFuture<WriteResult> result = docRef.set(data);
     }
+
+
+
+    //******************************************************
+    // New Methods
+    //******************************************************
+
+    @FXML
+    private TextField userTextField;
+
+    @FXML
+    private TextField passTextField;
+    public void switchToPrimaryAfterLogin() throws IOException{
+        String email = userTextField.getText();
+        String usersPassword = passTextField.getText();
+        String getFireBaseEmail;
+
+
+        //Getting String password from firebase
+        String fireBasePassword;
+
+
+        UserRecord userRecordEmail;
+
+
+
+        try {
+            //Getting email from database and putting it into variable
+            userRecordEmail = DemoApp.fauth.getUserByEmail(email);
+
+            getFireBaseEmail = userRecordEmail.getEmail();
+
+
+            //******************************************************
+            // Authenticating Username and Password
+            //******************************************************
+            ApiFuture<QuerySnapshot> future =  DemoApp.fstore.collection("Passwords").get();
+
+            List<QueryDocumentSnapshot> documents;
+            try
+            {
+                documents = future.get().getDocuments();
+                if(documents.size()>0)
+                {
+                    for (QueryDocumentSnapshot document : documents)
+                    {
+                        fireBasePassword = String.valueOf(document.getData().get("Password"));
+
+                        //If user's typed email matches in the database and user's type password matches
+                        // in database, they have successfully logged in.
+                        if(getFireBaseEmail.equals(email) && usersPassword.equals(fireBasePassword)){
+                            System.out.println("Logged in Successfully");
+                            DemoApp.setRoot("primary");
+                        }
+
+                    }
+                }
+                else
+                {
+                    System.out.println("No data");
+                }
+
+
+            }
+            catch (InterruptedException | ExecutionException ex)
+            {
+                ex.printStackTrace();
+            }
+
+            System.out.println(userRecordEmail.getEmail());
+        } catch (FirebaseAuthException e) {
+            throw new RuntimeException(e);
+        }
+
+
+    }
+
+    private void switchToPrimary() throws IOException {
+        DemoApp.setRoot("primary");
+    }
+
+
+
 }
